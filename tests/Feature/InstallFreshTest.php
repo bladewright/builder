@@ -192,4 +192,62 @@ class InstallFreshTest extends TestCase
             ->expectsOutputToContain('can open the admin and write code')
             ->assertSuccessful();
     }
+
+    /**
+     * **The install cannot leave somebody at a 500 without a word.**
+     *
+     * We run our own migrations and no more. On a database the application
+     * has never migrated, the site answers 500 the moment it is opened —
+     * right after an install that said everything went well. So the install
+     * says what is still missing.
+     */
+    public function test_it_says_when_the_application_has_not_migrated_itself(): void
+    {
+        config()->set('session.driver', 'database');
+        config()->set('session.table', 'sessions');
+
+        \Illuminate\Support\Facades\Schema::dropIfExists('sessions');
+
+        $this->artisan('bladewright:install')
+            ->expectsQuestion('What language does this site write in? (en, ja, …)', 'en')
+            ->expectsChoice("What is the site's CSS written in?", 'Plain CSS', ['Bootstrap', 'Pico', 'Plain CSS'])
+            ->expectsConfirmation('Create somebody to sign in with?', 'no')
+            ->expectsOutputToContain('has not run its own migrations')
+            ->expectsOutputToContain('php artisan migrate')
+            ->assertSuccessful();
+    }
+
+    /** With the table there, nothing is said — a warning nobody needs is noise. */
+    public function test_it_says_nothing_when_the_application_is_ready(): void
+    {
+        config()->set('session.driver', 'database');
+
+        \Illuminate\Support\Facades\Schema::dropIfExists('sessions');
+        \Illuminate\Support\Facades\Schema::create('sessions', function ($table) {
+            $table->string('id')->primary();
+        });
+
+        $this->artisan('bladewright:install')
+            ->expectsQuestion('What language does this site write in? (en, ja, …)', 'en')
+            ->expectsChoice("What is the site's CSS written in?", 'Plain CSS', ['Bootstrap', 'Pico', 'Plain CSS'])
+            ->expectsConfirmation('Create somebody to sign in with?', 'no')
+            ->doesntExpectOutputToContain('has not run its own migrations')
+            ->assertSuccessful();
+    }
+
+    /** A driver that keeps nothing in the database is never warned about. */
+    public function test_a_file_session_is_not_a_missing_table(): void
+    {
+        config()->set('session.driver', 'file');
+        config()->set('cache.default', 'file');
+
+        \Illuminate\Support\Facades\Schema::dropIfExists('sessions');
+
+        $this->artisan('bladewright:install')
+            ->expectsQuestion('What language does this site write in? (en, ja, …)', 'en')
+            ->expectsChoice("What is the site's CSS written in?", 'Plain CSS', ['Bootstrap', 'Pico', 'Plain CSS'])
+            ->expectsConfirmation('Create somebody to sign in with?', 'no')
+            ->doesntExpectOutputToContain('has not run its own migrations')
+            ->assertSuccessful();
+    }
 }

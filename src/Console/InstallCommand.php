@@ -313,7 +313,70 @@ class InstallCommand extends Command
             'Nothing on it is special: every piece is a block you can open and change',
         ]);
 
+        $this->sayWhatTheApplicationStillNeeds();
+
         return self::SUCCESS;
+    }
+
+    /**
+     * **What the application has not done for itself yet.**
+     *
+     * We run our own migrations and no more — the application's own are its
+     * developer's business, and running them uninvited would be reaching
+     * into somebody else's house. But on a database that has never been
+     * migrated, the site answers 500 the moment it is opened, and the
+     * install just said everything went well. So it is said here, before
+     * anybody goes looking.
+     */
+    private function sayWhatTheApplicationStillNeeds(): void
+    {
+        $missing = [];
+
+        foreach ($this->tablesTheApplicationNeeds() as $table => $why) {
+            if (! $this->tableIsThere($table)) {
+                $missing[] = $why;
+            }
+        }
+
+        if ($missing === []) {
+            return;
+        }
+
+        $this->components->warn('This application has not run its own migrations yet.');
+        $this->components->bulletList([...$missing, 'php artisan migrate makes them, and then the site opens']);
+    }
+
+    /**
+     * The application's own tables this site cannot be looked at without,
+     * and only the ones its own settings actually ask for.
+     *
+     * @return array<string, string>
+     */
+    private function tablesTheApplicationNeeds(): array
+    {
+        $wanted = [];
+
+        if (config('session.driver') === 'database') {
+            $wanted[(string) config('session.table', 'sessions')] = 'Sessions are kept in the database, and that table is not there — every page would answer 500';
+        }
+
+        if (config('cache.default') === 'database') {
+            $table = (string) config('cache.stores.database.table', 'cache');
+            $wanted[$table] = 'The cache is kept in the database, and that table is not there';
+        }
+
+        return $wanted;
+    }
+
+    private function tableIsThere(string $table): bool
+    {
+        try {
+            return \Illuminate\Support\Facades\Schema::hasTable($table);
+        } catch (\Throwable) {
+            // A connection that cannot be asked is not a missing table, and
+            // guessing aloud would only send somebody the wrong way.
+            return true;
+        }
     }
 
     /**

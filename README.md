@@ -8,11 +8,18 @@ section into place. Nothing lands until Save.
 
 ```bash
 composer require bladewright/builder
+php artisan migrate            # the application's own tables, if it has not yet
 php artisan bladewright:install
 ```
 
-That one command makes the tables, a layout, a welcome page and the first
+That one command makes our tables, a layout, a welcome page and the first
 person who can sign in. Then `/bladewright` is the admin and `/` is the site.
+
+**We run our own migrations and no more** — the application's own are yours,
+and running them uninvited would be reaching into your house. On a database
+that has never been migrated (a new MySQL, say) Laravel's `sessions` table is
+missing and every page answers 500, so `bladewright:install` looks at the end
+and says so if anything is still wanted.
 
 > Laravel's own welcome route holds `/`. Remove
 > `Route::get('/', fn () => view('welcome'));` from `routes/web.php` first, or
