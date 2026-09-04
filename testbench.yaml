@@ -1,0 +1,28 @@
+# **The workbench comes first.** It has to fix where the database is before
+# the package's boot (reading the stored settings) runs.
+providers:
+  - Workbench\App\Providers\WorkbenchServiceProvider
+  - Bladewright\BladewrightServiceProvider
+
+migrations: true
+
+# The defaults for running testbench locally.
+# With these, DB_CONNECTION and DB_DATABASE need not be exported every time.
+# The tests are pinned by phpunit.xml's env and defineEnvironment, so they are
+# unaffected.
+env:
+  DB_CONNECTION: sqlite
+  DB_DATABASE: workbench/database/database.sqlite
+  # The .env that testbench serve generates brings CACHE_STORE=database with
+  # it, and without a cache table every request 500s (HANDOFF §4, trap 1).
+  CACHE_STORE: array
+  # **An array session cannot hold a login** — it goes with every request.
+  # It is needed when BW_DEV_LOGIN=0 sends you through the real login screen.
+  SESSION_DRIVER: file
+  QUEUE_CONNECTION: sync
+
+workbench:
+  start: '/'
+  install: true
+  discovers:
+    web: true

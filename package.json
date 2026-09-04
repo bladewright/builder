@@ -1,0 +1,27 @@
+{
+    "name": "bladewright",
+    "private": true,
+    "type": "module",
+    "description": "Builds the admin CSS and JS. Nobody using Bladewright touches this; the built files ship with the package.",
+    "scripts": {
+        "build": "npm run build:css && npm run build:js",
+        "build:css": "tailwindcss -i resources/css/admin.css -o resources/dist/bladewright.css --minify",
+        "build:js": "esbuild resources/js/admin.js --bundle --format=iife --minify --outfile=resources/dist/bladewright.js && esbuild resources/js/editor.js --bundle --format=iife --minify --outfile=resources/dist/bladewright-editor.js",
+        "watch": "npm run build:css -- --watch"
+    },
+    "devDependencies": {
+        "@codemirror/lang-html": "^6.4.9",
+        "@codemirror/state": "^6.5.2",
+        "@codemirror/view": "^6.38.4",
+        "@tailwindcss/cli": "^4.1.16",
+        "codemirror": "^6.0.2",
+        "esbuild": "^0.25.12",
+        "tailwindcss": "^4.1.16"
+    },
+    "dependencies": {
+        "@codemirror/commands": "^6.11.0",
+        "@codemirror/lang-css": "^6.3.1",
+        "@codemirror/theme-one-dark": "^6.1.3",
+        "@lezer/highlight": "^1.2.3"
+    }
+}

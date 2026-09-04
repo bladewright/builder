@@ -1,0 +1,195 @@
+<?php
+
+namespace Bladewright\Tests\Feature;
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
+use Bladewright\Models\Layout;
+use Bladewright\Models\Page;
+use Bladewright\Tests\TestCase;
+
+/**
+ * The install, and taking the site back to the state right after it.
+ *
+ * **`migrate:fresh` is never what this does.** By default the site shares the
+ * customer's database, so that would take the customer's own tables with it.
+ * Only what begins with `bw_` goes, and the uploaded files always stay.
+ */
+class InstallFreshTest extends TestCase
+{
+    use RefreshDatabase;
+
+    /** One command: the welcome page is at /, out of the model's own pieces. */
+    public function test_one_command_gets_you_a_working_site(): void
+    {
+        $this->installSite()->assertSuccessful();
+
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('Edit a live site from the browser.', false)
+            // The four layers, named on the page they are made of.
+            ->assertSee('<h3>Component</h3>', false)
+            // The way in, dressed the way the rest of the frame is.
+            ->assertSee('class="btn btn-light btn-lg fw-semibold"', false)
+            ->assertSee("location.href='/bladewright'", false)
+            // The hero wears the palette's glow, resolved at render time.
+            ->assertSee('linear-gradient(135deg', false);
+
+        // Built from the four layers, not from anything special-cased: the
+        // page's three sections, and the header and footer the frame wears.
+        $this->assertSame(1, Page::query()->count());
+        $this->assertSame(1, Layout::query()->count());
+        $this->assertSame(6, \Bladewright\Models\Structure::query()->count());
+        $this->assertSame(10, \Bladewright\Models\Block::query()->count());
+
+        // **The bands are components**, changed on their own screen — and
+        // **each brings its own tag**: the seeded header is a <header>, the
+        // frame writes none of its own.
+        $layout = Layout::query()->firstOrFail();
+
+        $this->assertNotNull($layout->header_uuid);
+        $this->assertNotNull($layout->footer_uuid);
+        $this->assertStringNotContainsString('<header', $layout->content);
+        $this->assertSame('header', \Bladewright\Models\Structure::query()->where('name', 'bladewright-header')->firstOrFail()->type);
+        $this->assertSame('footer', \Bladewright\Models\Structure::query()->where('name', 'bladewright-footer')->firstOrFail()->type);
+
+        // The menu stands in a <nav> of its own, inside the <header>.
+        $this->get('/')->assertSee('<header', false)->assertSee('<nav', false)->assertSee('<footer', false);
+    }
+
+    /** A site that already has content is left alone. */
+    public function test_a_site_with_content_gets_no_welcome_page(): void
+    {
+        $this->installSite()->assertSuccessful();
+
+        $this->installSite()
+            ->expectsOutputToContain('already has content')
+            ->assertSuccessful();
+
+        $this->assertSame(1, Page::query()->count());
+    }
+
+    /** --fresh wipes and reinstalls, in one command. */
+    public function test_it_wipes_the_site_and_installs_it_again(): void
+    {
+        $this->installSite()->assertSuccessful();
+
+        $this->app->make(\Bladewright\Blocks\SitePages::class)->create('Old page', 'old');
+
+        $this->installSite('--fresh')->assertSuccessful();
+
+        $this->assertSame(0, Page::query()->where('name', 'Old page')->count());
+        $this->get('/')->assertOk();
+    }
+
+    /** **The customer's own tables are not touched.** They do not begin with `bw_`. */
+    public function test_it_leaves_the_customers_tables_alone(): void
+    {
+        Schema::create('shop_orders', function ($table) {
+            $table->id();
+            $table->string('code');
+        });
+
+        $this->app['db']->table('shop_orders')->insert(['code' => 'A-1']);
+
+        $this->installSite()->assertSuccessful();
+        $this->installSite('--fresh')->assertSuccessful();
+
+        $this->assertTrue(Schema::hasTable('shop_orders'));
+        $this->assertSame(1, $this->app['db']->table('shop_orders')->count());
+    }
+
+    /**
+     * **The customer's own migrations are not run either.** The install runs
+     * ours by path; half-written work of theirs must not go out because
+     * somebody installed a package.
+     */
+    public function test_it_leaves_the_customers_pending_migrations_alone(): void
+    {
+        $dir = $this->app->databasePath('migrations');
+        @mkdir($dir, 0777, true);
+        file_put_contents($dir.'/2099_01_01_000000_create_customer_things_table.php', <<<'MIGRATION'
+        <?php
+        use Illuminate\Database\Migrations\Migration;
+        use Illuminate\Database\Schema\Blueprint;
+        use Illuminate\Support\Facades\Schema;
+
+        return new class extends Migration {
+            public function up(): void
+            {
+                Schema::create('customer_things', fn (Blueprint $t) => $t->id());
+            }
+        };
+        MIGRATION);
+
+        try {
+            $this->installSite()->assertSuccessful();
+
+            $this->assertFalse(Schema::hasTable('customer_things'));
+        } finally {
+            @unlink($dir.'/2099_01_01_000000_create_customer_things_table.php');
+        }
+    }
+
+    /** **Media always stays.** It is the one thing nothing can restore. */
+    public function test_it_keeps_the_uploaded_files(): void
+    {
+        $this->installSite()->assertSuccessful();
+
+        $media = $this->app->make(\Bladewright\Media\MediaLibrary::class);
+        $file = $media->store(\Illuminate\Http\UploadedFile::fake()->image('logo.png'));
+
+        $this->installSite('--fresh')->assertSuccessful();
+
+        $this->assertTrue($media->disk()->exists($file->path));
+    }
+
+    /** A wrong name wipes nothing. */
+    public function test_a_wrong_name_wipes_nothing(): void
+    {
+        $this->installSite()->assertSuccessful();
+
+        $this->artisan('bladewright:install --fresh')
+            ->expectsQuestion("Type the site's name (Laravel) to wipe it", 'not-the-name')
+            ->assertFailed();
+
+        $this->assertSame(1, Page::query()->count());
+    }
+
+    /** It says what will be lost before it asks. */
+    public function test_it_says_what_will_be_lost(): void
+    {
+        $this->installSite()->assertSuccessful();
+
+        $this->installSite('--fresh')
+            ->expectsOutputToContain('tables to drop')
+            ->assertSuccessful();
+    }
+
+    /** The language answered here is the language new pages are born in. */
+    public function test_the_language_question_reaches_new_pages(): void
+    {
+        $this->artisan('bladewright:install')
+            ->expectsQuestion('What language does this site write in? (en, ja, …)', 'ja')
+            ->expectsQuestion("What is the site's CSS written in?", 'Bootstrap')
+            ->expectsConfirmation('Create somebody to sign in with?', 'no')
+            ->assertSuccessful();
+
+        // The welcome page itself was born in it.
+        $this->assertSame('ja', Page::query()->firstOrFail()->locale);
+    }
+
+    /**
+     * **Every account can do everything, and the install says so.**
+     */
+    public function test_it_says_the_admin_is_open_to_every_account(): void
+    {
+        \Bladewright\Models\User::create(['email' => 'someone@example.com', 'password' => 'secret-password']);
+
+        $this->artisan('bladewright:install')
+            ->expectsQuestion('What language does this site write in? (en, ja, …)', 'en')
+            ->expectsQuestion("What is the site's CSS written in?", 'Bootstrap')
+            ->expectsOutputToContain('can open the admin and write code')
+            ->assertSuccessful();
+    }
+}

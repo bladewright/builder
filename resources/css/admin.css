@@ -1,0 +1,348 @@
+/*
+ * The admin's styles (Tailwind).
+ *
+ * **This is our code.** All the markup is inside the package and present at
+ * build time, so Tailwind's scanning works.
+ *
+ * **The public site's CSS (bladewright-site.css) stays plain CSS.** There the
+ * customer writes classes in a browser, so there is nothing to scan at build
+ * time. Some places must not use the same tool.
+ */
+
+@import "tailwindcss";
+
+/*
+ * The dark palette **can be chosen by hand**.
+ *
+ * By default it follows the OS, and once chosen that choice is remembered
+ * (data-bw-theme is written onto <html> at start-up). A media query alone
+ * cannot be switched by hand.
+ */
+@custom-variant dark (&:where(html[data-bw-theme="dark"], html[data-bw-theme="dark"] *));
+
+/* Blade is outside gitignore, but saying so leaves less to go wrong */
+@source "../views/**/*.blade.php";
+@source "../../src/**/*.php";
+
+@theme {
+    /* The signature colour. One quiet indigo, with light and shade for difference */
+    --color-bw-accent: #4f46e5;
+    --color-bw-accent-dark: #4338ca;
+    --color-bw-accent-2: #22d3ee;
+
+    --font-sans: "Zen Kaku Gothic New", Roboto, ui-sans-serif, system-ui,
+        "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+}
+
+@layer base {
+    /* Japanese needs generous line spacing to be readable */
+    body {
+        @apply leading-relaxed antialiased;
+    }
+
+    /* A table's heading and its body share a height */
+    table { @apply text-left; }
+}
+
+/*
+ * CodeMirror. **This alone is written as plain CSS.**
+ * The library makes its markup at runtime, so there is nowhere to put a
+ * utility class.
+ */
+.bw-code-editor {
+    @apply rounded-xl border border-gray-200 overflow-hidden bg-white dark:border-gray-700 dark:bg-gray-900;
+}
+
+.bw-code-editor .cm-editor {
+    height: 28rem;
+    font-size: 0.8125rem;
+}
+
+.bw-code-editor .cm-editor.cm-focused {
+    outline: none;
+}
+
+.bw-cm-comment { color: #6b7280; font-style: italic; }
+.bw-cm-echo { color: #0d9488; }
+.bw-cm-directive { color: #7c3aed; font-weight: 600; }
+
+html[data-bw-theme="dark"] .bw-cm-comment { color: #94a3b8; }
+html[data-bw-theme="dark"] .bw-cm-echo { color: #5eead4; }
+html[data-bw-theme="dark"] .bw-cm-directive { color: #c4b5fd; }
+
+.bw-code-editor .cm-scroller {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    line-height: 1.7;
+}
+
+/*
+ * Opening and closing the column. **What it gives up, the body takes** (the body is flex-1).
+ *
+ * Toggling display makes it vanish in an instant, so **a negative margin
+ * sends it sideways**. The width stays and only the position moves, so the
+ * body widens along with it.
+ */
+.bw-sidebar {
+    transition: width 220ms ease;
+}
+
+/*
+ * **Folded, not gone.** The icons stay as a rail, each word riding in a
+ * tooltip on its right — the way home never disappears from the screen.
+ */
+@media (min-width: 1024px) {
+    /* Wide enough that every icon sits exactly where it sat open: the
+       words are cut off, nothing moves. */
+    [data-bw-sidebar="closed"] .bw-sidebar {
+        width: 4rem;
+    }
+
+    [data-bw-sidebar="closed"] .bw-sidebar .bw-nav-label,
+    [data-bw-sidebar="closed"] .bw-sidebar .bw-nav-head {
+        display: none;
+    }
+
+    [data-bw-sidebar="closed"] .bw-user-row {
+        justify-content: center;
+    }
+
+    /* Folded, the icons are all there is — so they grow into the room the
+       words gave back. The squares stay put; only the drawing swells. */
+    [data-bw-sidebar="closed"] .bw-nav-square svg {
+        height: 1.25rem;
+        width: 1.25rem;
+    }
+
+    [data-bw-sidebar="closed"] .bw-user-tools {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+}
+
+/* The square's ground appears under the hand. */
+.bw-nav-quiet:hover .bw-nav-square {
+    background: var(--color-gray-100);
+    color: var(--color-gray-700);
+}
+
+html[data-bw-theme="dark"] .bw-nav-quiet:hover .bw-nav-square {
+    background: var(--color-gray-800);
+    color: var(--color-gray-200);
+}
+
+/* The word, on the icon's right — only while the rail is folded. */
+@layer components {
+    .bw-nav-link {
+        position: relative;
+    }
+}
+
+.bw-nav-link::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    white-space: nowrap;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+    background: color-mix(in srgb, var(--color-gray-900) 92%, transparent);
+    color: #fff;
+}
+
+[data-bw-sidebar="closed"] .bw-nav-link:hover::after,
+[data-bw-sidebar="closed"] .bw-nav-link:focus-visible::after {
+    opacity: 1;
+}
+
+.bw-sidebar-handle {
+    transition: left 220ms ease, transform 220ms ease, color 150ms ease;
+}
+
+/* The handle clings to the column's right edge, folded or not */
+.bw-sidebar-handle {
+    left: 15rem;                       /* the column's width (w-60) */
+    transform: translate(-50%, -50%);
+    border-radius: 6px;
+}
+
+[data-bw-sidebar="closed"] .bw-sidebar-handle {
+    left: 4rem;                        /* the rail's width */
+}
+
+.bw-sidebar-show { @apply hidden; }
+[data-bw-sidebar="closed"] .bw-sidebar-show { @apply block; }
+[data-bw-sidebar="closed"] .bw-sidebar-close { @apply hidden; }
+
+/*
+ * Tooltips. **Every icon-only button gets one.**
+ * The title attribute is slow to appear and never looks the same twice.
+ *
+ * **It lives in @layer components.** Written plainly it would cancel
+ * Tailwind's utilities (fixed and the like), because plain CSS wins over the
+ * layers. The column's handle really did lose fixed and fly to the top left.
+ */
+@layer components {
+    .bw-tip {
+        position: relative;
+    }
+}
+
+.bw-tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    white-space: nowrap;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 120ms ease;
+    background: color-mix(in srgb, var(--color-gray-900) 92%, transparent);
+    color: #fff;
+}
+
+.bw-tip:hover::after,
+.bw-tip:focus-visible::after {
+    opacity: 1;
+}
+
+/*
+ * **Above, for anything standing at the foot of the screen.** A tip that
+ * opens downwards from the last row is cut off by the window, which is worse
+ * than no tip at all.
+ */
+.bw-tip-above::after {
+    top: auto;
+    bottom: calc(100% + 6px);
+}
+
+/*
+ * The chosen block's workbench. **The preview narrows rather than folds.**
+ * As with the column, a negative margin sends it sideways and it slides.
+ */
+.bw-inspector {
+    width: 22rem;
+    margin-right: -22rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: margin-right 220ms ease, opacity 180ms ease;
+}
+
+[data-bw-inspector="open"] .bw-inspector {
+    margin-right: 0;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/*
+ * The preview's width. **Only the frame narrows**, so nothing reloads and no
+ * state is rebuilt — the iframe is left alone.
+ */
+.bw-preview-stage {
+    display: flex;
+    justify-content: center;
+    transition: padding 200ms ease;
+}
+
+.bw-preview-stage iframe {
+    max-width: 100%;
+    transition: max-width 220ms ease;
+}
+
+html[data-bw-device="tablet"] .bw-preview-stage iframe {
+    max-width: 834px;
+}
+
+html[data-bw-device="phone"] .bw-preview-stage iframe {
+    max-width: 390px;
+}
+
+html[data-bw-device="tablet"] .bw-preview-stage,
+html[data-bw-device="phone"] .bw-preview-stage {
+    padding: 1rem;
+}
+
+html[data-bw-device="tablet"] .bw-preview-stage iframe,
+html[data-bw-device="phone"] .bw-preview-stage iframe {
+    border-radius: 12px;
+    box-shadow: 0 10px 30px -12px rgb(0 0 0 / .25);
+}
+
+/*
+ * The switch beside Sign out shows **where pressing it would take you**: a sun
+ * while it is dark, a moon while it is light.
+ */
+.bw-theme-sun { display: none; }
+.bw-theme-moon { display: block; }
+html[data-bw-theme="dark"] .bw-theme-sun { display: block; }
+html[data-bw-theme="dark"] .bw-theme-moon { display: none; }
+
+/* The pill, the device and the palette chosen */
+.bw-pill.is-on,
+.bw-device.is-on,
+.bw-scheme.is-on {
+    background: var(--color-white);
+    color: var(--color-gray-900);
+    box-shadow: 0 1px 2px rgb(0 0 0 / .06);
+}
+
+.bw-pill.is-on {
+    font-weight: 600;
+}
+
+html[data-bw-theme="dark"] .bw-pill.is-on,
+html[data-bw-theme="dark"] .bw-device.is-on,
+html[data-bw-theme="dark"] .bw-scheme.is-on {
+    background: var(--color-gray-700);
+    color: var(--color-gray-50);
+}
+
+/* A block while it is being dragged */
+.bw-dragging {
+    @apply opacity-40;
+}
+
+.bw-drop-target {
+    @apply outline-2 outline-offset-2 outline-dashed outline-bw-accent;
+}
+
+/* A place to drop: a thin band that opens as you approach */
+.bw-drop-zone-active {
+    @apply h-10 border-bw-accent bg-bw-accent/10;
+}
+
+/* The editing panel beside the page preview. **The width is what animates**
+   — the preview then reflows continuously instead of jumping — and the
+   column's 1rem gap is cancelled at zero so nothing is left to snap. The
+   contents keep their width and are clipped, not squashed. */
+.bw-panel {
+    animation: bw-panel-in 0.25s ease;
+    overflow: hidden;
+}
+
+.bw-panel > div {
+    min-width: min(24rem, 90vw);
+}
+
+@keyframes bw-panel-in {
+    from { width: 0; margin-left: -1rem; opacity: 0; }
+}
+
+.bw-panel-leaving {
+    width: 0 !important;
+    margin-left: -1rem;
+    opacity: 0;
+    transition: width 0.2s ease, margin-left 0.2s ease, opacity 0.2s ease;
+}

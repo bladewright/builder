@@ -1,0 +1,24 @@
+# What a `composer require` should not have to download.
+#
+# **The repository keeps them; the package does not carry them.** A person
+# installing this wants the package, not our workbench, our tests, or the
+# notes we left each other.
+/.github            export-ignore
+/.gitattributes     export-ignore
+/.gitignore         export-ignore
+/.phpunit.cache     export-ignore
+/.vscode            export-ignore
+/tests              export-ignore
+/workbench          export-ignore
+/docs               export-ignore
+/node_modules       export-ignore
+/package.json       export-ignore
+/package-lock.json  export-ignore
+/phpunit.xml        export-ignore
+/testbench.yaml     export-ignore
+/HANDOFF.md         export-ignore
+/COMMANDS.md        export-ignore
+/resources/js       export-ignore
+/resources/css      export-ignore
+*.xlsx              export-ignore
+*.pdf               export-ignore
