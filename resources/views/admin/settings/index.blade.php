@@ -7,6 +7,7 @@
             ['route' => 'bladewright.admin.settings.stylesheet', 'title' => __('Stylesheet'), 'says' => __('One CSS file for the whole site: hover, media queries, shared classes'), 'icon' => 'braces'],
             ['route' => 'bladewright.admin.settings.application', 'title' => __('Application'), 'says' => __('The Laravel side: the site\'s name, language, timezone'), 'icon' => 'sliders'],
             ['route' => 'bladewright.admin.settings.analytics', 'title' => __('Analytics'), 'says' => __('Google Analytics from one measurement id — public pages only'), 'icon' => 'chart'],
+            ['route' => 'bladewright.admin.settings.export', 'title' => __('Take the site as files'), 'says' => __('Every published page as plain HTML, with the stylesheet and the pictures'), 'icon' => 'down'],
         ] as $door)
             <a href="{{ route($door['route']) }}" data-bw-row tabindex="0"
                class="flex cursor-pointer items-center gap-4 border-b border-gray-100 px-5 py-4 transition last:border-b-0 hover:bg-gray-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-bw-accent dark:border-gray-800 dark:hover:bg-gray-800/50">
@@ -16,6 +17,8 @@
                             <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
                         @elseif ($door['icon'] === 'braces') {{-- lucide: braces --}}
                             <path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>
+                        @elseif ($door['icon'] === 'down') {{-- lucide: download --}}
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>
                         @elseif ($door['icon'] === 'chart') {{-- lucide: chart-line --}}
                             <path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/>
                         @else {{-- lucide: sliders-horizontal --}}

@@ -36,4 +36,10 @@ class SettingsController
     {
         return view('bladewright::admin.settings.analytics');
     }
+
+    /** The site as files somebody can put anywhere. */
+    public function export(): View
+    {
+        return view('bladewright::admin.settings.export');
+    }
 }

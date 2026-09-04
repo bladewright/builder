@@ -346,6 +346,7 @@ class BladewrightServiceProvider extends ServiceProvider
                 Route::get('settings/stylesheet', [SettingsController::class, 'stylesheet'])->name('settings.stylesheet');
                 Route::get('settings/application', [SettingsController::class, 'application'])->name('settings.application');
                 Route::get('settings/analytics', [SettingsController::class, 'analytics'])->name('settings.analytics');
+                Route::get('settings/export', [SettingsController::class, 'export'])->name('settings.export');
 
                 // The unit for adding a whole feature. What is in it comes later.
             });

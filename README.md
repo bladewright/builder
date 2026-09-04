@@ -82,6 +82,32 @@ The site says once what its CSS is written in — **Bootstrap, Pico, or plain
 CSS** — and every preview wears it, so a class means on the screen what it
 will mean on the page.
 
+## Taking the site as files
+
+**Settings → Take the site as files** writes every published page out as plain
+HTML, in a folder you can put on any host that serves files — or open straight
+off a disk.
+
+What the application was serving becomes a file: the stylesheet lands beside
+the pages as `site.css`, and every picture the pages show lands under
+`media/`, with the pages pointed at where they landed. What is fetched from
+somewhere else stays fetched from there — Bootstrap on a CDN is a link either
+way.
+
+```
+index.html                 /
+about/index.html           /about
+company/people/index.html  /company/people
+site.css
+media/…
+```
+
+A page whose URL is a shape (`news/{slug}`) is left out and said so on the
+screen: it stands for many paths, and a copy cannot know which of them exist.
+
+The zip is made when you press the button and handed straight over. **Nothing
+of it is kept on the server.**
+
 ## What it promises
 
 | Promise | Why |
