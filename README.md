@@ -23,8 +23,9 @@ and says so if anything is still wanted.
 
 > Laravel ships a route for `/`, and **your own routes always win** — so the
 > welcome page would be published and invisible. The install notices, says so,
-> and offers to comment that route out. **It asks first and a no is the
-> default**: nothing of yours is written to unless you say yes.
+> and offers to comment that route out — **asking first, always**, because
+> nothing of yours is written to without a word from you. Say no and the file
+> is left exactly as it was.
 
 ---
 

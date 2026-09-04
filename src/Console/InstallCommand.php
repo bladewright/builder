@@ -361,9 +361,12 @@ class InstallCommand extends Command
             return;
         }
 
-        // **Asked plainly, and refused by default.** Reaching into somebody
-        // else's routes is not something to do on a shrug.
-        if (! $this->components->confirm('Comment it out? (nothing else in the file is touched)', false)) {
+        // **Asked plainly, and yes by default.** Somebody who has just
+        // installed a CMS wants / to be its front page, and the route in the
+        // way is the placeholder every new Laravel ships with. Pressing
+        // return should do the obvious thing — and what it does is said
+        // aloud, written in a comment, and undone by deleting two slashes.
+        if (! $this->components->confirm('Comment it out? (nothing else in the file is touched)', true)) {
             $this->components->bulletList(['Left as it is. Comment that route out whenever you like and / is the site\'s']);
 
             return;
