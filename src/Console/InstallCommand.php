@@ -79,6 +79,11 @@ class InstallCommand extends Command
 
         $this->makeFirstUser();
 
+        // **Last, and only after everything else has had its say.** It asks
+        // to touch a file that is not ours, and that question deserves to
+        // come when the rest is settled rather than in the middle of it.
+        $this->offerToFreeTheFrontPage();
+
         return $result;
     }
 
@@ -316,6 +321,143 @@ class InstallCommand extends Command
         $this->sayWhatTheApplicationStillNeeds();
 
         return self::SUCCESS;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* The front page, when something else already answers it              */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * **A welcome page nobody can see is worse than no welcome page.**
+     *
+     * Our pages are served from a fallback, which by design answers only
+     * what nothing else did — so a `Route::get('/')` left in the host's own
+     * routes wins, and the page we just published is invisible with no hint
+     * as to why. Every first install meets this, because Laravel ships that
+     * route in every new application.
+     *
+     * **We do not write into the application's tree.** That is the promise
+     * this whole package rests on. So we ask, and only a yes lets us in —
+     * consent is not intrusion. A no leaves the file untouched and says how
+     * to do it by hand.
+     */
+    private function offerToFreeTheFrontPage(): void
+    {
+        $file = $this->routeFileHoldingTheFrontPage();
+
+        if ($file === null) {
+            return;
+        }
+
+        $this->components->warn('Something else already answers /.');
+        $this->components->bulletList([
+            'The welcome page is published, and nobody can see it: '.$this->shortPath($file).' has a route for / and it wins',
+            'This is by design — your own routes always win, and ours answer what nothing else did',
+        ]);
+
+        if (! $this->canAsk()) {
+            $this->components->bulletList(['Comment that route out and / is the site\'s']);
+
+            return;
+        }
+
+        // **Asked plainly, and refused by default.** Reaching into somebody
+        // else's routes is not something to do on a shrug.
+        if (! $this->components->confirm('Comment it out? (nothing else in the file is touched)', false)) {
+            $this->components->bulletList(['Left as it is. Comment that route out whenever you like and / is the site\'s']);
+
+            return;
+        }
+
+        $this->commentOutTheFrontPage($file)
+            ? $this->components->info('Done — / is the site\'s now. The old lines are still there, commented, to put back.')
+            : $this->components->warn('It could not be written to. Comment that route out by hand and / is the site\'s.');
+    }
+
+    /**
+     * The host's own route file that answers `/`, if one does.
+     *
+     * **Only a route we can see plainly.** Anything clever — a variable, a
+     * controller, a group — is somebody's own arrangement, and guessing at
+     * it would be worse than saying nothing.
+     */
+    private function routeFileHoldingTheFrontPage(): ?string
+    {
+        // Nothing to free if our own front page is not where it would be.
+        if (! \Bladewright\Models\Page::query()->where('url', '')->where('is_published', true)->exists()) {
+            return null;
+        }
+
+        foreach ([base_path('routes/web.php')] as $file) {
+            if (is_file($file) && $this->frontPageLinesIn((string) file_get_contents($file)) !== null) {
+                return $file;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Where a plain `Route::get('/', …)` begins and ends in this file.
+     *
+     * @return array{0: int, 1: int}|null the first and last line, counting from 0
+     */
+    private function frontPageLinesIn(string $source): ?array
+    {
+        $lines = explode("\n", $source);
+
+        foreach ($lines as $at => $line) {
+            if (preg_match('/^\s*Route::get\(\s*[\'"]\/?[\'"]\s*,/', $line) !== 1) {
+                continue;
+            }
+
+            // A one-liner ends where it began; a closure runs to its own `});`.
+            if (preg_match('/;\s*$/', $line) === 1) {
+                return [$at, $at];
+            }
+
+            foreach (array_slice($lines, $at + 1, 20, true) as $to => $after) {
+                if (preg_match('/^\s*\}\s*\)\s*;\s*$/', $after) === 1) {
+                    return [$at, $to];
+                }
+            }
+
+            // Something we cannot read to the end of: left alone.
+            return null;
+        }
+
+        return null;
+    }
+
+    /** Comment those lines out, and say who did it and how to undo it. */
+    private function commentOutTheFrontPage(string $file): bool
+    {
+        $source = (string) file_get_contents($file);
+        $found = $this->frontPageLinesIn($source);
+
+        if ($found === null) {
+            return false;
+        }
+
+        [$from, $to] = $found;
+        $lines = explode("\n", $source);
+
+        for ($at = $from; $at <= $to; $at++) {
+            $lines[$at] = '// '.$lines[$at];
+        }
+
+        array_splice($lines, $from, 0, [
+            '// Commented out by bladewright:install, with permission, so that /',
+            '// reaches the site\'s own front page. Uncomment to take it back.',
+        ]);
+
+        return @file_put_contents($file, implode("\n", $lines)) !== false;
+    }
+
+    /** A path as a person would say it: from the application's own root. */
+    private function shortPath(string $file): string
+    {
+        return ltrim(str_replace(base_path(), '', $file), '/\\');
     }
 
     /**

@@ -21,9 +21,10 @@ that has never been migrated (a new MySQL, say) Laravel's `sessions` table is
 missing and every page answers 500, so `bladewright:install` looks at the end
 and says so if anything is still wanted.
 
-> Laravel's own welcome route holds `/`. Remove
-> `Route::get('/', fn () => view('welcome'));` from `routes/web.php` first, or
-> the sample page will not show.
+> Laravel ships a route for `/`, and **your own routes always win** — so the
+> welcome page would be published and invisible. The install notices, says so,
+> and offers to comment that route out. **It asks first and a no is the
+> default**: nothing of yours is written to unless you say yes.
 
 ---
 

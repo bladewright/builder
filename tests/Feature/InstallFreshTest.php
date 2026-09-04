@@ -250,4 +250,110 @@ class InstallFreshTest extends TestCase
             ->doesntExpectOutputToContain('has not run its own migrations')
             ->assertSuccessful();
     }
+
+    /* ------------------------------------------------------------------ */
+    /* The front page, when something else already answers it              */
+    /* ------------------------------------------------------------------ */
+
+    private function routesSaying(string $body): string
+    {
+        $file = base_path('routes/web.php');
+
+        @mkdir(dirname($file), 0o777, true);
+        file_put_contents($file, $body);
+
+        return $file;
+    }
+
+    private const LARAVELS_OWN = <<<'PHP'
+    <?php
+
+    use Illuminate\Support\Facades\Route;
+
+    Route::get('/', function () {
+        return view('welcome');
+    });
+
+    Route::get('/about', fn () => 'mine');
+
+    PHP;
+
+    private function install(string $answer)
+    {
+        return $this->artisan('bladewright:install')
+            ->expectsQuestion('What language does this site write in? (en, ja, …)', 'en')
+            ->expectsChoice("What is the site's CSS written in?", 'Plain CSS', ['Bootstrap', 'Pico', 'Plain CSS'])
+            ->expectsConfirmation('Create somebody to sign in with?', 'no')
+            ->expectsConfirmation('Comment it out? (nothing else in the file is touched)', $answer);
+    }
+
+    /**
+     * **Consent, not intrusion.** We never write into the application's tree
+     * uninvited — so it is asked, and a yes is what lets us in.
+     */
+    public function test_it_asks_before_freeing_the_front_page(): void
+    {
+        $file = $this->routesSaying(self::LARAVELS_OWN);
+
+        $this->install('yes')
+            ->expectsOutputToContain('Something else already answers /')
+            ->assertSuccessful();
+
+        $now = file_get_contents($file);
+
+        // The route is commented, and said who did it.
+        $this->assertStringContainsString("// Route::get('/', function () {", $now);
+        $this->assertStringContainsString('//     return view(\'welcome\');', $now);
+        $this->assertStringContainsString('// });', $now);
+        $this->assertStringContainsString('bladewright:install, with permission', $now);
+
+        // **Nothing else in the file is touched.**
+        $this->assertStringContainsString("Route::get('/about', fn () => 'mine');", $now);
+        $this->assertStringNotContainsString("// Route::get('/about'", $now);
+    }
+
+    /** **A no leaves the file exactly as it was**, to the character. */
+    public function test_a_no_leaves_the_routes_untouched(): void
+    {
+        $file = $this->routesSaying(self::LARAVELS_OWN);
+
+        $this->install('no')
+            ->expectsOutputToContain('Left as it is')
+            ->assertSuccessful();
+
+        $this->assertSame(self::LARAVELS_OWN, file_get_contents($file));
+    }
+
+    /** With nothing in the way, nothing is asked — a question nobody needs is noise. */
+    public function test_it_says_nothing_when_the_front_page_is_free(): void
+    {
+        $this->routesSaying("<?php\n\nuse Illuminate\\Support\\Facades\\Route;\n");
+
+        $this->artisan('bladewright:install')
+            ->expectsQuestion('What language does this site write in? (en, ja, …)', 'en')
+            ->expectsChoice("What is the site's CSS written in?", 'Plain CSS', ['Bootstrap', 'Pico', 'Plain CSS'])
+            ->expectsConfirmation('Create somebody to sign in with?', 'no')
+            ->doesntExpectOutputToContain('Something else already answers')
+            ->assertSuccessful();
+    }
+
+    /**
+     * **What cannot be read plainly is left alone.** Somebody's own
+     * arrangement — a controller, a group, a variable — is not ours to guess
+     * at, and a wrong guess would comment out the wrong thing.
+     */
+    public function test_a_route_it_cannot_read_plainly_is_left_alone(): void
+    {
+        $clever = "<?php\n\nuse Illuminate\\Support\\Facades\\Route;\n\nRoute::get(\$home, [HomeController::class, 'index']);\n";
+        $file = $this->routesSaying($clever);
+
+        $this->artisan('bladewright:install')
+            ->expectsQuestion('What language does this site write in? (en, ja, …)', 'en')
+            ->expectsChoice("What is the site's CSS written in?", 'Plain CSS', ['Bootstrap', 'Pico', 'Plain CSS'])
+            ->expectsConfirmation('Create somebody to sign in with?', 'no')
+            ->doesntExpectOutputToContain('Something else already answers')
+            ->assertSuccessful();
+
+        $this->assertSame($clever, file_get_contents($file));
+    }
 }
