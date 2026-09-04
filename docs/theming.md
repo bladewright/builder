@@ -1,115 +1,88 @@
 # Changing the look
 
-**This product has no look of its own.** The CSS in the package is structure
-that keeps things from breaking — columns line up, what someone types cannot
-burst its container — and nothing else. No colours, no spacing.
-
-The design lives entirely in the layout's `<style>`, which is **your site's
-own code**. `composer update` never touches it, so rewrite as much of it as
-you like.
-
-**There is no build step.** That is what "fix it in the browser without
-deploying" rests on: where a build decides which classes exist, a class added
-later quietly does nothing.
+**This product has no look of its own.** Nothing in the package decides a
+colour, a size or a spacing on your site. What a page wears comes from four
+places, and all four are yours.
 
 ---
 
-## Change the tokens
+## 1. What the CSS is written in
 
-Touch the `:root` block at the top of the layout and the look changes without
-a single edit to the markup.
+The site says once — at install — what its stylesheet language is:
 
-| Token | What it changes |
+| | |
 |---|---|
-| `--grad` / `--grad-a` / `--grad-b` | Buttons, the closing band, the logo |
-| `--grad-heading` | The gradient behind the hero's heading |
-| `--ground` / `--surface` / `--surface-2` | The background, and the cards |
-| `--ink-strong` / `--ink` / `--muted` / `--faint` | Four weights of text |
-| `--rule` | Rules |
-| `--link` | Links |
-| `--soft` / `--soft-sm` | Shadows |
-| `--radius` | Corner rounding (cards, the closing band) |
-| `--wrap` | The measure of the body |
+| **Bootstrap** | The framework's own CSS is linked, and a class like `btn btn-primary` means what it means |
+| **Pico** | Classless: plain HTML is already dressed |
+| **Plain CSS** | Nothing is linked. Everything comes from your own stylesheet |
 
-The tokens the packaged blocks read live in the same place.
+It is a site-wide declaration rather than a layout's, because a class is
+written on a block at the bottom and only means something if the whole site
+agrees. **Every preview wears it too**, so what you see while editing is what
+the page will be.
 
-| Token | What it changes |
-|---|---|
-| `--bw-accent` / `--bw-on-accent` | The lead colour of the packaged blocks, buttons included |
-| `--bw-line` | Rules inside the packaged blocks |
-| `--bw-radius` | Button corners |
-| `--bw-gap` | The gap between columns |
-| `--bw-space` | A section's space above and below (when "Normal" is chosen) |
-| `--bw-edge` | A section's space at the sides |
-| `--bw-tone-muted` | The colour of a band set to "Soft tint" |
-| `--bw-card` / `--bw-card-space` | A card's background and its inner spacing |
+It is asked once, at `bladewright:install`. **There is no screen for
+changing it afterwards yet** — `bladewright:install --fresh` asks again, and
+that wipes the site, so choose it deliberately the first time.
 
-### Twelve lines, and it is a different site
+## 2. The palette
 
-```css
---grad:         linear-gradient(to top left, #B45309, #F59E0B);
---grad-heading: linear-gradient(to bottom right, #7C2D12, #D97706);
---grad-a: #B45309;   --grad-b: #F59E0B;
---ground: #FBF7F0;   --surface: #FFFDF9;
---ink-strong: #1C1917; --ink: #44403C;
---rule: #E7E0D5;     --link: #B45309;
---radius: .25rem;    --wrap: 62rem;
-```
+**Settings → Colours** holds the site's colours by name — `ink`, `paper`,
+`accent`, `rule`, and any you add. Blocks and components refer to them *by
+name*, so changing what `accent` means changes every page that uses it, the
+moment they are next asked for.
 
-Without changing one character of HTML, an indigo gradient site becomes a
-square-cornered warm one.
+A name may hold a gradient as easily as a colour, since `background` takes
+either.
 
----
+## 3. The site's own stylesheet
 
-## A dark colour scheme
+**Settings → Stylesheet** is one CSS file for the whole site. It is served
+with a version stamp that changes when the file does, so a fix reaches
+visitors at once rather than after a cache expires.
 
-**Write both entrances.** With only one, whoever is building cannot check
-their work.
+This is where anything the cards cannot say belongs: `::before`, `:nth-child`,
+keyframes, deep selectors, your own utility classes.
 
-```css
-@media (prefers-color-scheme: dark) {
-    :root:not([data-bw-scheme="light"]) { /* override the tokens */ }
-}
+## 4. The cards
 
-html[data-bw-scheme="dark"] { /* the same tokens again */ }
-```
+Most of the look is set on the parts themselves, and read back from them:
 
-- `prefers-color-scheme` … the visitor's own device setting
-- `[data-bw-scheme]` … **the mark the editor's preview sets**
+- **Colour** — text and background, from the palette by name or written in
+- **Padding** — as a box, the way a browser's inspector shows it
+- **Border** — thickness, colour, and which sides
+- **Corners, shadow, transition**
+- **Type** — size, line height, letter spacing, the four a writer knows
+  (bold, italic, underline, strike), and alignment
+- **Hover** — a colour or an opacity for when the pointer is on it
+- **Arrangement** — stacked, a grid (`auto`, a count, or `1fr 2fr`), or a row
+  with its own alignment; and whether small screens fold it into one column
 
-Turn on "Supports a dark colour scheme" in the settings and the editor lets
-you switch between light and dark to check. Without the second entrance,
-switching does nothing at all (and the screen says so).
+The typeface is the **layout's** word — one font stack for every page wearing
+that frame — because setting it block by block would be misery.
 
----
+### Where a card's answer goes
 
-## About the class names
+Straight onto the element, as a `style` attribute. That is deliberate: the
+Code face of every layer then shows the whole truth of a part in one place,
+and generated code can be copied by hand without leaving anything behind.
 
-The packaged blocks emit `bw-section`, `bw-row`, `bw-col-6`, `bw-card`,
-`bw-prose` and so on. `bw-row` and `bw-col-*` follow the way Bootstrap writes
-them (twelfths included).
+The two things a style attribute cannot say — **a hover, and a screen width**
+— are collected as the page renders and printed in the document's own
+`<style>`, under a class the renderer gives and never stores.
 
-- **These names do not change.** Changing one would be a breaking change
-- Bootstrap uses `bs-`, so nothing collides
-- **Only if you run Tailwind with `prefix: 'bw-'` does `bw-prose` collide**
+## There is no build step
 
-## Calling a block
+That is what "fix it in the browser without deploying" rests on. Where a build
+decides which classes exist, a class added later quietly does nothing.
 
-In a page's code, a block is called by this name.
+Using a build while authoring a block is of course fine — it is the *site's*
+CSS that must not need one.
 
-```blade
-<livewire:bw::blocks.hero heading="…" />
-```
+## Writing it yourself instead
 
-`bw` is configurable (`bladewright.namespace`), but **the name is baked into
-the page's code**. If you change it, run `bladewright:reexpand` to bring
-existing pages in line (blocks edited by hand are left alone, so search for
-those and fix them).
+Every layer has a **Code** face. Write there and it becomes that layer —
+Blade of the site's own, run when the page is asked for. The layout's frame
+is a whole HTML document; a page can be one too, DOCTYPE and all.
 
-## What not to do
-
-- **Introduce something that needs a build into the site.** Classes added from
-  the browser will quietly stop working (using one while authoring a block,
-  where the build does see it, is fine)
-- **Reach into the packaged markup with deep selectors.** When the tokens are
-  not enough, taking the block over (forking it) and rewriting it is safer
+Empty it again and the arrangement leads once more.

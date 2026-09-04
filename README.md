@@ -1,138 +1,148 @@
-# Bladewright
+# Bladewright Builder
 
-A CMS for editing a running Laravel site from the browser.
+Build and edit a Laravel site from the browser.
 
-The contents of a page, the Blade, and the logic behind it are all written
-from the admin — no editor, no deploy, straight onto the published page.
+Pages, layouts, components and blocks — arranged in a preview that *is* the
+page. Press a part to open it, type into the words where they stand, drag a
+section into place. Nothing lands until Save.
 
-> **Status:** in development. The repository is private and not on Packagist
-> yet, so see [Installing](#installing) for how it goes in today.
+```bash
+composer require bladewright/builder
+php artisan bladewright:install
+```
+
+That one command makes the tables, a layout, a welcome page and the first
+person who can sign in. Then `/bladewright` is the admin and `/` is the site.
+
+> Laravel's own welcome route holds `/`. Remove
+> `Route::get('/', fn () => view('welcome'));` from `routes/web.php` first, or
+> the sample page will not show.
 
 ---
 
-## Installing
+## The four layers
 
-```bash
-composer config repositories.bladewright vcs https://github.com/bladewright/bladewright
-composer require bladewright/bladewright:dev-main
+A site is made of four things, and each one is a screen.
 
-# Laravel's own welcome page holds /, so remove it first:
-#   Route::get('/', fn () => view('welcome')); in routes/web.php
+| | What it is |
+|---|---|
+| **Layout** | The frame: a whole HTML document with `{{ $slot }}` where the page goes, plus the header and footer components it wears. The site's typeface is set here |
+| **Page** | A URL, a layout to wear, and a row of components. Carries its own title and description, and a publishing window |
+| **Component** | A structure that means something — a `section`, `nav`, `article`, `form` — holding blocks, and other components |
+| **Block** | One element: markdown, an image, a video, a button, a form field. **One block is one element**, and markdown is the only one that is many |
 
-php artisan bladewright:install --sample   # with the sample page
-# php artisan bladewright:install --empty  # the frame only (a layout; no page)
-```
+Everything is held by uuid, so renaming anything breaks nothing, and editing a
+block reaches every page showing it the moment that page is next asked for.
 
-That one command sets up the tables, the storage, a starter and the first
-person who can sign in. With a terminal it asks about the starter and the
-first user; from a script, pass `--sample --user=you@example.com
---password=…` and **it asks nothing**.
+## Editing in the preview
 
-Afterwards `/` shows the sample page and `/bladewright` is the admin.
+The page editor's preview is the page itself, wearing marks only the admin can
+see. In it:
 
-## What we promise
+- **Press** a block to open it, or the space around it to open the component
+- **Double-press** words to type into them where they stand
+- **+** between parts opens a shelf of what can go there — left and right when
+  the parts stand side by side
+- **Drag** by the corner to move a part; the page scrolls when you reach its
+  edge, and a seam shows where it would land
+- **×** takes a part off the page. The part itself stays on its shelf
 
-Keeping these is what makes it distributable as a package and operable on
-Cloud.
+**Nothing lands until Save.** Until then the page in the database has not
+moved, and an amber dot says something is waiting.
+
+## Three faces, one truth
+
+Every layer can be looked at three ways, and they stay in step before anything
+is saved:
+
+- **Preview** — what a visitor would see
+- **Structure** — the same thing as a tree, for changing words without hunting
+  for them on the page
+- **Code** — the HTML it comes out as. **Write here and it becomes the
+  layer**: Blade of the site's own, run when the page is asked for. Empty it
+  and the arrangement leads again
+
+The road out is always open, at every layer, without leaving the browser.
+
+## How a part looks
+
+On cards, not in a stylesheet:
+
+- **Colour** from the site's own palette, by name — change a name in Colours
+  and every page wearing it follows
+- **Spacing, borders, corners, shadows** — a border is thickness, colour and
+  which sides, said as the box it draws on
+- **Hover** — a colour or an opacity for when the pointer is on it
+- **How the contents stand** — stacked, in a grid (`auto`, a count, or
+  `1fr 2fr`), or in a row with its own alignment. Small screens fold it back
+  into one column unless told otherwise
+- **A class of its own**, for whatever stylesheet the site declares
+
+The site says once what its CSS is written in — **Bootstrap, Pico, or plain
+CSS** — and every preview wears it, so a class means on the screen what it
+will mean on the page.
+
+## What it promises
 
 | Promise | Why |
 |---|---|
-| **Never write into the application source tree** | Once the user's code and the package's code mix, updates can no longer be shipped. Everything generated lives under `config('bladewright.root')` |
-| **Never rewrite a route file** | One `Route::fallback()` catches the request and the page is resolved from the database. `route:cache` keeps working |
-| **No controller per page** | There is one `SitePageController`. Logic specific to a page belongs to its template (a single-file component) |
-| **Drafts apart from what is published** | Editing always lands in a draft and goes through a preview before it is published |
-| **Never write to `.env` or a config file** | Saved settings live in the database and override `config()` at boot. That coexists with `config:cache` and works on read-only hosting. **By default not a single host setting is touched** |
+| **Never writes into the application's tree** | `app/`, `resources/` and `routes/` are yours. Once the two mix, updates cannot be shipped |
+| **Never rewrites a route file** | One `Route::fallback()` catches what matched nothing else. `route:cache` keeps working, and your own routes always win |
+| **Never writes to `.env`** | Settings live in the database and override `config()` at boot — which works with `config:cache` and on read-only hosting. **By default not one host setting is touched** |
+| **Nothing lands until Save** | The arrangement in the database does not move while you are moving things around |
+| **An error page never says what runs the site** | A site's software is nobody else's business |
 
-### The site's own CSS is plain CSS
+## Commands
 
-The starter is built with plain CSS and nothing else. **Having no build step**
-is what "fix it in the browser without deploying" rests on: with something
-like Tailwind, where a build decides which classes exist, a class added later
-quietly does nothing. (Using it while authoring a block is fine.)
-
-The look comes from the tokens at the top of the layout —
-see [docs/theming.md](docs/theming.md).
-
-### Living alongside Laravel
-
-Because `.env` is never rewritten, **what a file says and what the app does
-can differ** (when someone changed the same key from the admin). Three things
-show where a value comes from:
+Everything a screen does, a command does — so it can be scripted, and checked.
 
 ```bash
-php artisan about                 # the keys currently overridden (none if there are none)
-php artisan bladewright:setting   # key, current value, where it comes from, what it replaced
+php artisan bladewright:pages        # list, create, copy, rename, publish, delete
+php artisan bladewright:layouts
+php artisan bladewright:components
+php artisan bladewright:blocks
+php artisan bladewright:media
+php artisan bladewright:user
+php artisan bladewright:setting      # key, value, where it comes from
+php artisan bladewright:install --fresh
+php artisan bladewright:uninstall
 ```
 
-The settings screen also says "The config file (.env) says …" for a key that
-is being overridden.
+See [docs/commands.md](docs/commands.md) for what each one takes.
 
-By default only `bladewright.*` and our own media disk can be changed. To
-edit a host setting (`app.name`, say) from the screen, add it to
-`settings.allow` in `config/bladewright.php`. **Opening it is the owner's
-call**, in that order.
+## Living alongside Laravel
 
-## Layout of the package
+Because `.env` is never rewritten, a file and the running application can
+differ — when somebody changed the same key from the admin. Two things say
+where a value came from:
 
-```
-src/
-  BladewrightServiceProvider.php   registers the view namespace and the routes
-  Models/                          components, routes, revisions, entries, terms
-  Routing/                         path → component (cached), and the path guard
-  Blocks/                          block expansion, placement, fields, styles
-  Entries/                         entries and their terms
-  Health/                          checks the HTML that came out
-  Support/                         pages, revisions, settings, storage
-  Http/Controllers/                the public site, previews, the admin
-  Console/                         install / create-page / place / doctor / …
-config/bladewright.php
-database/migrations/
-tests/
+```bash
+php artisan about                 # the keys currently overridden
+php artisan bladewright:setting   # key, value, where it comes from, what it replaced
 ```
 
-Where generated files live:
+The settings screen says it too. By default only `bladewright.*` and our own
+media disk may be changed from the browser; to open a host setting (`app.name`,
+say) add it to `settings.allow` in `config/bladewright.php`. **Opening it is
+the owner's call.**
 
-```
-storage/app/bladewright/
-  views/
-    pages/{key}.blade.php     published
-    drafts/{key}.blade.php    draft
-```
+## Requirements
 
-`views/` is registered under the `bw` namespace, so `bw::pages.home`
-resolves.
+PHP 8.3+, Laravel 13, Livewire 4. Any database Laravel supports.
 
 ## Development
 
 ```bash
 composer install
-composer test          # phpunit
-composer serve         # testbench serve, to look at it in a browser
-```
+composer test
 
-To look at it in a browser:
-
-```bash
-export DB_CONNECTION=sqlite
-export DB_DATABASE="$(pwd)/workbench/database/database.sqlite"
-touch "$DB_DATABASE"
-
-vendor/bin/testbench migrate --force
-vendor/bin/testbench bladewright:install --sample
+# to look at it in a browser
+npm install && npm run build
+vendor/bin/testbench migrate
+vendor/bin/testbench bladewright:install
 vendor/bin/testbench serve
 ```
 
-## Adding it to an existing application
-
-```bash
-composer require bladewright/bladewright
-php artisan bladewright:install --empty
-php artisan bladewright:create-page "Home" --path="" --publish
-```
-
-The host application's own routes always win. Bladewright only picks up
-requests that matched nothing else.
-
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
